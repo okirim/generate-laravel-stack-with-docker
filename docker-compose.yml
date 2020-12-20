@@ -10,6 +10,9 @@ services:
     depends_on: 
       - php
       - mysql
+      - redis
+      - artisan
+      - npm
   php:
     build:
       context: .
@@ -22,8 +25,23 @@ services:
       - ./mysql.env
   composer:
     build:
-      context: ./dockerfiles
-      dockerfile: composer.dockerfile
+      context: .
+      dockerfile: ./dockerfiles/composer.dockerfile
     volumes: 
       - ./laravel:/var/www
+  artisan:
+    build:
+      context: .
+      dockerfile: ./dockerfiles/php.dockerfile
+    volumes: 
+      - ./laravel:/var/www
+    entrypoint: ["php", "/var/www/artisan"]
+  npm:
+    build:
+      context: .
+      dockerfile: ./dockerfiles/npm.dockerfile
+    volumes: 
+      - ./laravel:/var/www
+  redis:
+    image: redis:6.0.9         
 
