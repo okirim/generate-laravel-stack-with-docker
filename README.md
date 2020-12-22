@@ -1,24 +1,25 @@
 "generate laravel project with docker :"
-# php:7.4
-# mysql:5.7
-# redis:6.0.9
-# node:14
+- php:7.4
+- mysql:5.7
+- redis:6.0.9
+- node:14
+-composer:latest
 
-if you are familliar you can change the docker-image version
+if you are familliar with docker you can change the docker-image version in the docker-compose file 
 
 ```
-docker-compose build
-
 docker-compose run --rm composer create-project laravel/laravel . --prefer-dist
 
-copy docker.env .env
+docker-compose up --rm -d server
+
+mv docker.env ./laravel/.env
 
 install php package with composer :
 
-docker-compose run --rm composer ...
+docker run --rm -v /var/www/vendor composer ...
 
 install npm package with node :
 
-docker-compose run --rm npm ...
+docker run --rm -v /var/www/node_modules npm ...
 
 ```

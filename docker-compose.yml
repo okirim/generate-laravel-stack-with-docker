@@ -5,45 +5,46 @@ services:
     ports: 
       - '8000:80'
     volumes: 
-      - ./:/var/www
+      - ./laravel:/var/www
       - ./dep-config/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on: 
       - php
       - mysql
       - redis
-      - artisan
-      - npm
   php:
+    container_name: php
     build:
       context: .
       dockerfile: dockerfiles/php.dockerfile
     volumes: 
       - ./laravel:/var/www
   mysql:
+    container_name: mysql
     image: mysql:5.7
     env_file: 
       - ./dep-config/mysql.env
   composer:
+    container_name: composer
     build:
       context: .
       dockerfile: ./dockerfiles/composer.dockerfile
     volumes: 
-      - ./:/var/www
-      - /var/www/vendor
+      - ./laravel:/var/www
   artisan:
+    container_name: artisan
     build:
       context: .
       dockerfile: ./dockerfiles/php.dockerfile
     volumes: 
-      - ./:/var/www
+      - ./laravel:/var/www
     entrypoint: ["php", "/var/www/artisan"]
   npm:
+    container_name: npm
     build:
       context: .
       dockerfile: ./dockerfiles/npm.dockerfile
     volumes: 
-      - ./:/var/www
-      - /var/www/node_modules
+      - ./laravel:/var/www
   redis:
     image: redis:6.0.9-alpine         
 
