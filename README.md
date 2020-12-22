@@ -25,13 +25,14 @@ mv docker.env ./laravel/.env
 
 
 - use composer 
-install php package with composer example :
-docker run --rm  composer require firebase/php-jwt
+install php package with composer :
+docker run --rm  composer require example_package
 
 -use npm
-install npm packages with node example :
-docker run --rm -v npm install nodemon
+install npm packages with node :
+docker run --rm -v npm install example_package
 
 -use artisan example:
 docker run --rm artisan make:model Post
+
 ```
