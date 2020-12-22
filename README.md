@@ -5,18 +5,21 @@
 - node:14
 -composer:latest
 
-if you are familliar with docker you can change the docker-image version in the docker-compose file 
-
 ```
+step 1: - create laravel project :
 docker-compose run --rm composer create-project laravel/laravel . --prefer-dist
 
+step 2 : build and run the server 
 docker-compose up --rm -d server
 
-mv docker.env ./laravel/.env
+
+step 3: mv docker.env ./laravel/.env
 
 install php package with composer :
 
+step 4 : replace the .env file
 docker run --rm -v /var/www/vendor composer ...
+
 
 install npm package with node :
 
