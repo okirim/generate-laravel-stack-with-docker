@@ -30,6 +30,7 @@ services:
       dockerfile: ./dockerfiles/composer.dockerfile
     volumes: 
       - ./laravel:/var/www
+      - /var/www/vendor
   artisan:
     container_name: artisan
     build:
@@ -45,6 +46,7 @@ services:
       dockerfile: ./dockerfiles/npm.dockerfile
     volumes: 
       - ./laravel:/var/www
+      - /var/www/node_modules
   redis:
     image: redis:6.0.9-alpine         
 
