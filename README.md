@@ -17,7 +17,7 @@ git clone git@github.com:okirim/generate-laravel-stack-with-docker.git
 docker-compose run --rm composer create-project laravel/laravel . --prefer-dist
 ```
 
-### step 3:  run nginx server (http://localhost:8000)
+### step 3:  run nginx server on (http://localhost:8000)
 ```
 docker-compose up --rm -d server
 ```
