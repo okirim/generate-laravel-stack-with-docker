@@ -12,7 +12,7 @@
 git clone git@github.com:okirim/generate-laravel-stack-with-docker.git
 ```
 
-### step 2: create laravel project
+### step 2: create new laravel project
 ```
 docker-compose run --rm composer create-project laravel/laravel . --prefer-dist
 ```
