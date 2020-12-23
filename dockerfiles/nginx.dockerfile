@@ -1,6 +1,11 @@
-FROM  nginx:1.18.0
+FROM nginx:stable-alpine
 
-ENV NGINX_ENTRYPOINT_QUIET_LOGS 1
+WORKDIR /etc/nginx/conf.d
 
-EXPOSE 80
+COPY nginx/nginx.conf .
 
+RUN mv nginx.conf default.conf
+
+WORKDIR /var/www
+
+COPY laravel .

@@ -1,7 +1,10 @@
 version: "3.8"
 services: 
   server:
-    image: 'nginx:stable-alpine'
+    #image: nginx:stable-alpine
+    build:
+      context: .
+      dockerfile: dockerfiles/ngnix.dockerfile
     ports: 
       - '8000:80'
     volumes: 
