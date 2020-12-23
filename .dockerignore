@@ -1,6 +1,4 @@
-dep-config
-dockerfiles
 docker.env
 .gitignore
 README.md
-laravel
+dockerfiles

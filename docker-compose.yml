@@ -4,7 +4,7 @@ services:
     #image: nginx:stable-alpine
     build:
       context: .
-      dockerfile: dockerfiles/ngnix.dockerfile
+      dockerfile: dockerfiles/nginx.dockerfile
     ports: 
       - '8000:80'
     volumes: 
@@ -33,7 +33,7 @@ services:
       dockerfile: ./dockerfiles/composer.dockerfile
     volumes: 
       - ./laravel:/var/www
-      - /var/www/vendor
+      #- /var/www/vendor
   artisan:
     container_name: artisan
     build:
@@ -49,7 +49,9 @@ services:
       dockerfile: ./dockerfiles/npm.dockerfile
     volumes: 
       - ./laravel:/var/www
-      - /var/www/node_modules
+      #- /var/www/node_modules
   redis:
-    image: redis:6.0.9-alpine         
+    image: redis:6.0.9-alpine
+    ports:
+        - "6382:6379"         
 

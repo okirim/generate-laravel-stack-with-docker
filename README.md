@@ -23,21 +23,24 @@ docker-compose up --rm -d server
 
 step 3:  replace the .env file
 
-mv docker.env ./laravel/.env
+cp docker.env ./laravel/.env
 
 
 - use composer 
 install php package with composer :
 
-docker run --rm  composer require example_package
+docker run --rm  -v /var/www/vendor composer require example_package
 
 -use npm
 install npm packages with node :
 
-docker run --rm  npm install example_package
+docker run --rm  -v /var/www/node_modules npm install example_package
 
 -use artisan example:
 
 docker run --rm artisan make:model Post
 
+-shut down the server :
+
+docker-compose  down
 ```
