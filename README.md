@@ -44,4 +44,4 @@ docker run --rm artisan make:model Post
 ```
 docker-compose  down
 ```
-### for an already existing project you must create a laravel folder and put the project in it
+- for an already existing project you must create a laravel folder and put the project in it and ignore step 2
