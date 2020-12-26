@@ -6,6 +6,7 @@
 - node
 - composer
 - nginx
+- cron job (default : 60 s)
 
 ### step 1 :
 ```
@@ -19,7 +20,7 @@ docker-compose run --rm composer create-project laravel/laravel . --prefer-dist
 
 ### step 3:  run nginx server on (http://localhost:8000)
 ```
-docker-compose up --rm -d server
+docker-compose up -d server
 ```
 
 ### step 4:  replace the .env file

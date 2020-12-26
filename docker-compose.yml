@@ -14,6 +14,7 @@ services:
       - php
       - mysql
       - redis
+      - task-scehduler
   php:
     container_name: php
     build:
@@ -53,5 +54,14 @@ services:
   redis:
     image: redis:6.0.9-alpine
     ports:
-        - "6382:6379"         
+        - "6382:6379"
+  task-scehduler:
+    container_name: cron-job
+    build:
+      context: .
+      dockerfile: ./dockerfiles/cron.dockerfile
+    volumes: 
+      - ./laravel:/var/www
+ 
+
 
