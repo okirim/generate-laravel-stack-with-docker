@@ -18,7 +18,7 @@ git clone git@github.com:okirim/generate-laravel-stack-with-docker.git
 docker-compose run --rm composer create-project laravel/laravel . --prefer-dist
 ```
 
-### step 3:  run nginx server on (http://localhost:8000)
+### step 3:  run nginx server on (http://localhost:8080)
 ```
 docker-compose up -d server
 ```
@@ -26,6 +26,11 @@ docker-compose up -d server
 ### step 4:  replace the .env file
 ```
 cp docker.env ./laravel/.env
+```
+
+### step 5:  install predis
+```
+docker run --rm  -v /var/www/vendor composer require predis/predis
 ```
 
 ### how to use composer 

@@ -1,12 +1,18 @@
 version: "3.8"
+networks:
+    application-net:
+volumes:
+  mysql:    
+#services  
 services: 
   server:
-    #image: nginx:stable-alpine
+    image: nginx:stable-alpine
+    container_name: sever
     build:
       context: .
       dockerfile: dockerfiles/nginx.dockerfile
     ports: 
-      - '8000:80'
+      - '8080:80'
     volumes: 
       - ./laravel:/var/www
       - ./dep-config/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
@@ -14,7 +20,9 @@ services:
       - php
       - mysql
       - redis
-      - task-scehduler
+      - task-scehduler    
+    networks:
+      - application-net
   php:
     container_name: php
     build:
@@ -22,11 +30,18 @@ services:
       dockerfile: dockerfiles/php.dockerfile
     volumes: 
       - ./laravel:/var/www
+    networks:
+      - application-net
   mysql:
     container_name: mysql
-    image: mysql:5.7
+    restart: always
+    image: mysql:8
     env_file: 
       - ./dep-config/mysql.env
+    volumes:
+      - mysql:/var/lib/mysql 
+    networks:
+      - application-net  
   composer:
     container_name: composer
     build:
@@ -34,6 +49,8 @@ services:
       dockerfile: ./dockerfiles/composer.dockerfile
     volumes: 
       - ./laravel:/var/www
+    networks:
+      - application-net  
       #- /var/www/vendor
   artisan:
     container_name: artisan
@@ -43,6 +60,8 @@ services:
     volumes: 
       - ./laravel:/var/www
     entrypoint: ["php", "/var/www/artisan"]
+    networks:
+      - application-net
   npm:
     container_name: npm
     build:
@@ -50,18 +69,26 @@ services:
       dockerfile: ./dockerfiles/npm.dockerfile
     volumes: 
       - ./laravel:/var/www
+    networks:
+      - application-net 
       #- /var/www/node_modules
   redis:
+    container_name: redis
     image: redis:6.0.9-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - ./data/redis:/data
     ports:
-        - "6382:6379"
+      - "6382:6379"
+    networks:
+      - application-net  
   task-scehduler:
     container_name: cron-job
     build:
       context: .
       dockerfile: ./dockerfiles/cron.dockerfile
-    volumes: 
-      - ./laravel:/var/www
- 
+    networks:
+      - application-net  
+
 
 
