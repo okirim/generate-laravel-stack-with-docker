@@ -1,23 +1,19 @@
-public static String jsonEscape(String s) {
-    if (s == null) return "";
-    StringBuilder out = new StringBuilder();
-    for (int i = 0; i < s.length(); i++) {
-        char c = s.charAt(i);
-        switch (c) {
-            case '"':  out.append("\\\""); break;
-            case '\\': out.append("\\\\"); break;
-            case '\b': out.append("\\b");  break;
-            case '\f': out.append("\\f");  break;
-            case '\n': out.append("\\n");  break;
-            case '\r': out.append("\\r");  break; // ton CHAR13 !
-            case '\t': out.append("\\t");  break;
-            default:
-                if (c <= 0x1F) {
-                    out.append(String.format("\\u%04X", (int)c));
-                } else {
-                    out.append(c);
-                }
-        }
-    }
-    return out.toString();
-}
+SELECT tablespace_name,
+       ROUND(SUM(bytes)/1024/1024) AS total_mb,
+       ROUND(SUM(bytes - free_bytes)/1024/1024) AS used_mb,
+       ROUND(SUM(free_bytes)/1024/1024) AS free_mb,
+       ROUND(SUM((bytes - free_bytes)/bytes) * 100, 2) AS pct_used
+FROM (
+  SELECT df.tablespace_name,
+         df.file_id,
+         df.bytes,
+         NVL(fs.free_bytes,0) AS free_bytes
+  FROM dba_data_files df
+  LEFT JOIN (
+    SELECT file_id, SUM(bytes) AS free_bytes
+    FROM dba_free_space
+    GROUP BY file_id
+  ) fs ON df.file_id = fs.file_id
+)
+GROUP BY tablespace_name
+ORDER BY pct_used DESC;
