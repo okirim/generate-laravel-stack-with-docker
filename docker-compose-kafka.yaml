@@ -1,27 +1,31 @@
-version: "3.8"
-
+version: '2'
 services:
-  kafka:
-    image: bitnami/kafka:latest
-    container_name: kafka
+
+  broker:
+    image: confluentinc/confluent-local:7.4.1
+    hostname: broker
+    container_name: broker
     ports:
-      - "9092:9092"
+      - "8082:8082"
+      - "9092:9092"   # PLAINTEXT pour le host
+      - "9093:9093"   # SSL pour le host
+      - "9101:9101"
     environment:
-      # KRaft mode (no zookeeper)
-      - KAFKA_ENABLE_KRAFT=yes
-      - KAFKA_CFG_PROCESS_ROLES=broker,controller
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
-      - KAFKA_CFG_NODE_ID=1
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      KAFKA_LISTENERS: >
+        PLAINTEXT://broker:29092,
+        CONTROLLER://broker:29093,
+        PLAINTEXT_HOST://0.0.0.0:9092,
+        SSL_HOST://0.0.0.0:9093
 
-      # Dev settings
-      - ALLOW_PLAINTEXT_LISTENER=yes
+      KAFKA_ADVERTISED_LISTENERS: >
+        PLAINTEXT://broker:29092,
+        PLAINTEXT_HOST://localhost:9092,
+        SSL_HOST://localhost:9093
 
-    volumes:
-      - kafka_data:/bitnami/kafka
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: >
+        PLAINTEXT:PLAINTEXT,
+        PLAINTEXT_HOST:PLAINTEXT,
+        SSL_HOST:SSL,
+        CONTROLLER:PLAINTEXT
 
-volumes:
-  kafka_data:
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@broker:29093'
