@@ -6,10 +6,9 @@ services:
     hostname: broker
     container_name: broker
     ports:
-      - "8082:8082"
-      - "9092:9092"   # PLAINTEXT pour le host
-      - "9093:9093"   # SSL pour le host
-      - "9101:9101"
+      - "9092:9092"
+      - "9093:9093"
+
     environment:
       KAFKA_LISTENERS: >
         PLAINTEXT://broker:29092,
@@ -25,7 +24,23 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: >
         PLAINTEXT:PLAINTEXT,
         PLAINTEXT_HOST:PLAINTEXT,
-        SSL_HOST:SSL,
+        SSL_HOST:SASL_SSL,
         CONTROLLER:PLAINTEXT
 
       KAFKA_CONTROLLER_QUORUM_VOTERS: '1@broker:29093'
+
+      # TLS auto
+      KAFKA_SSL_KEYSTORE_TYPE: PEM
+      KAFKA_SSL_TRUSTSTORE_TYPE: PEM
+      KAFKA_SSL_CLIENT_AUTH: none
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: ""
+
+      # 🔥 SASL PLAIN
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_LISTENER_NAME_SSL_HOST_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_LISTENER_NAME_SSL_HOST_PLAIN_SASL_JAAS_CONFIG: >
+        org.apache.kafka.common.security.plain.PlainLoginModule required
+        username="admin"
+        password="admin-secret"
+        user_admin="admin-secret";
