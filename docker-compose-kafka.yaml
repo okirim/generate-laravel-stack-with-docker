@@ -1,46 +1,107 @@
-version: '2'
-services:
+@Configuration
+@EnableTransactionManagement
+@EnableJpaRepositories(
+        basePackages = "com.example.report.repo",
+        entityManagerFactoryRef = "reportEntityManager",
+        transactionManagerRef = "reportTxManager"
+)
+public class SecondaryDbConfig {
 
-  broker:
-    image: confluentinc/confluent-local:7.4.1
-    hostname: broker
-    container_name: broker
-    ports:
-      - "9092:9092"
-      - "9093:9093"
+    @Bean
+    @ConfigurationProperties("secondary.datasource")
+    public DataSourceProperties reportDsProps() {
+        return new DataSourceProperties();
+    }
 
-    environment:
-      KAFKA_LISTENERS: >
-        PLAINTEXT://broker:29092,
-        CONTROLLER://broker:29093,
-        PLAINTEXT_HOST://0.0.0.0:9092,
-        SSL_HOST://0.0.0.0:9093
+    @Bean
+    public DataSource reportDataSource() {
+        return reportDsProps().initializeDataSourceBuilder().build();
+    }
 
-      KAFKA_ADVERTISED_LISTENERS: >
-        PLAINTEXT://broker:29092,
-        PLAINTEXT_HOST://localhost:9092,
-        SSL_HOST://localhost:9093
+    @Bean
+    public LocalContainerEntityManagerFactoryBean reportEntityManager(EntityManagerFactoryBuilder builder) {
+        return builder
+                .dataSource(reportDataSource())
+                .packages("com.example.report.entity")
+                .persistenceUnit("reportPU")
+                .build();
+    }
 
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: >
-        PLAINTEXT:PLAINTEXT,
-        PLAINTEXT_HOST:PLAINTEXT,
-        SSL_HOST:SASL_SSL,
-        CONTROLLER:PLAINTEXT
 
-      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@broker:29093'
 
-      # TLS auto x
-      KAFKA_SSL_KEYSTORE_TYPE: PEM
-      KAFKA_SSL_TRUSTSTORE_TYPE: PEM
-      KAFKA_SSL_CLIENT_AUTH: none
-      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: ""
+@Service
+public class AppService {
 
-      # 🔥 SASL PLAIN
-      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
-      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
-      KAFKA_LISTENER_NAME_SSL_HOST_SASL_ENABLED_MECHANISMS: PLAIN
-      KAFKA_LISTENER_NAME_SSL_HOST_PLAIN_SASL_JAAS_CONFIG: >
-        org.apache.kafka.common.security.plain.PlainLoginModule required
-        username="admin"
-        password="admin-secret"
-        user_admin="admin-secret";
+    @Autowired
+    private TestAppRepository repo;
+
+    @Transactional  // datasource par défaut
+    public void saveApp(String name) {
+        repo.save(new TestApp(name));
+    }
+}
+
+@Service
+public class ReportService {
+
+    @Autowired
+    private TestReportRepository repo;
+
+    @Transactional("reportTxManager")  // datasource secondaire
+    public void saveReport(String description) {
+        repo.save(new TestReport(description));
+    }
+}
+
+    @Bean
+    public PlatformTransactionManager reportTxManager(@Qualifier("reportEntityManager") EntityManagerFactory emf) {
+        return new JpaTransactionManager(emf);
+    }
+
+    @Bean(initMethod = "migrate")
+    public Flyway reportFlyway() {
+        return Flyway.configure()
+                .dataSource(reportDataSource())
+                .locations("classpath:db/migration/report")
+                .baselineOnMigrate(true)
+                .load();
+    }
+}
+Mais avec deux BDD + Flyway, il y a 3 pièges classiques :
+
+Flyway s’auto-lance sur la BDD principale via l’auto-config Spring Boot
+
+Ta BDD secondaire n’est pas gérée par cette auto-config
+
+Tu dois pouvoir activer/désactiver indépendamment les migrations de chaque BDD
+
+La clé = désactiver l’auto Flyway global, puis déclarer 2 beans Flyway manuels, chacun piloté par des properties.
+
+
+@Bean(initMethod = "migrate")
+@ConditionalOnProperty(prefix = "app.flyway.main", name = "enabled", havingValue = "true")
+public Flyway mainFlyway(@Qualifier("mainDataSource") DataSource ds) {
+    return Flyway.configure()
+            .dataSource(ds)
+            .locations("classpath:db/migration/main")
+            .baselineOnMigrate(true)
+            .load();
+}
+
+@Bean(initMethod = "migrate")
+@ConditionalOnProperty(prefix = "app.flyway.report", name = "enabled", havingValue = "true")
+public Flyway reportFlyway(@Qualifier("reportDataSource") DataSource ds) {
+    return Flyway.configure()
+            .dataSource(ds)
+            .locations("classpath:db/migration/report")
+            .baselineOnMigrate(true)
+            .load();
+}
+
+app:
+  flyway:
+    main:
+      enabled: true
+    report:
+      enabled: true
+
