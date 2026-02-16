@@ -1,107 +1,43 @@
+package com.example.config;
+
+import jakarta.annotation.PostConstruct;
+import javax.sql.DataSource;
+
+import org.flywaydb.core.Flyway;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
 @Configuration
-@EnableTransactionManagement
-@EnableJpaRepositories(
-        basePackages = "com.example.report.repo",
-        entityManagerFactoryRef = "reportEntityManager",
-        transactionManagerRef = "reportTxManager"
-)
-public class SecondaryDbConfig {
+public class FlywayConfig {
 
     @Bean
-    @ConfigurationProperties("secondary.datasource")
-    public DataSourceProperties reportDsProps() {
-        return new DataSourceProperties();
+    @ConditionalOnProperty(prefix = "app.flyway.main", name = "enabled", havingValue = "true")
+    public Flyway mainFlyway(@Qualifier("mainDataSource") DataSource ds) {
+        return buildFlyway(ds, "classpath:db/migration/main");
     }
 
     @Bean
-    public DataSource reportDataSource() {
-        return reportDsProps().initializeDataSourceBuilder().build();
+    @ConditionalOnProperty(prefix = "app.flyway.report", name = "enabled", havingValue = "true")
+    public Flyway reportFlyway(@Qualifier("reportDataSource") DataSource ds) {
+        return buildFlyway(ds, "classpath:db/migration/report");
     }
 
-    @Bean
-    public LocalContainerEntityManagerFactoryBean reportEntityManager(EntityManagerFactoryBuilder builder) {
-        return builder
-                .dataSource(reportDataSource())
-                .packages("com.example.report.entity")
-                .persistenceUnit("reportPU")
-                .build();
-    }
-
-
-
-@Service
-public class AppService {
-
-    @Autowired
-    private TestAppRepository repo;
-
-    @Transactional  // datasource par défaut
-    public void saveApp(String name) {
-        repo.save(new TestApp(name));
-    }
-}
-
-@Service
-public class ReportService {
-
-    @Autowired
-    private TestReportRepository repo;
-
-    @Transactional("reportTxManager")  // datasource secondaire
-    public void saveReport(String description) {
-        repo.save(new TestReport(description));
-    }
-}
-
-    @Bean
-    public PlatformTransactionManager reportTxManager(@Qualifier("reportEntityManager") EntityManagerFactory emf) {
-        return new JpaTransactionManager(emf);
-    }
-
-    @Bean(initMethod = "migrate")
-    public Flyway reportFlyway() {
+    private Flyway buildFlyway(DataSource ds, String location) {
         return Flyway.configure()
-                .dataSource(reportDataSource())
-                .locations("classpath:db/migration/report")
+                .dataSource(ds)
+                .locations(location)
                 .baselineOnMigrate(true)
                 .load();
     }
+
+    /**
+     * Lance les migrations pour tous les Flyway déclarés
+     */
+    @PostConstruct
+    public void migrate(ObjectProvider<Flyway> flyways) {
+        flyways.orderedStream().forEach(Flyway::migrate);
+    }
 }
-Mais avec deux BDD + Flyway, il y a 3 pièges classiques :
-
-Flyway s’auto-lance sur la BDD principale via l’auto-config Spring Boot
-
-Ta BDD secondaire n’est pas gérée par cette auto-config
-
-Tu dois pouvoir activer/désactiver indépendamment les migrations de chaque BDD
-
-La clé = désactiver l’auto Flyway global, puis déclarer 2 beans Flyway manuels, chacun piloté par des properties.
-
-
-@Bean(initMethod = "migrate")
-@ConditionalOnProperty(prefix = "app.flyway.main", name = "enabled", havingValue = "true")
-public Flyway mainFlyway(@Qualifier("mainDataSource") DataSource ds) {
-    return Flyway.configure()
-            .dataSource(ds)
-            .locations("classpath:db/migration/main")
-            .baselineOnMigrate(true)
-            .load();
-}
-
-@Bean(initMethod = "migrate")
-@ConditionalOnProperty(prefix = "app.flyway.report", name = "enabled", havingValue = "true")
-public Flyway reportFlyway(@Qualifier("reportDataSource") DataSource ds) {
-    return Flyway.configure()
-            .dataSource(ds)
-            .locations("classpath:db/migration/report")
-            .baselineOnMigrate(true)
-            .load();
-}
-
-app:
-  flyway:
-    main:
-      enabled: true
-    report:
-      enabled: true
-
