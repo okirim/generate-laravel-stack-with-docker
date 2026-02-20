@@ -1,43 +1,17 @@
-package com.example.config;
+-- Se connecter en admin
+ALTER SESSION SET CONTAINER = XEPDB1;
 
-import jakarta.annotation.PostConstruct;
-import javax.sql.DataSource;
+-- Création des schémas
+CREATE USER APP1 IDENTIFIED BY Pass123
+DEFAULT TABLESPACE USERS
+TEMPORARY TABLESPACE TEMP
+QUOTA UNLIMITED ON USERS;
 
-import org.flywaydb.core.Flyway;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+GRANT CONNECT, RESOURCE TO APP1;
 
-@Configuration
-public class FlywayConfig {
+CREATE USER APP2 IDENTIFIED BY Pass123
+DEFAULT TABLESPACE USERS
+TEMPORARY TABLESPACE TEMP
+QUOTA UNLIMITED ON USERS;
 
-    @Bean
-    @ConditionalOnProperty(prefix = "app.flyway.main", name = "enabled", havingValue = "true")
-    public Flyway mainFlyway(@Qualifier("mainDataSource") DataSource ds) {
-        return buildFlyway(ds, "classpath:db/migration/main");
-    }
-
-    @Bean
-    @ConditionalOnProperty(prefix = "app.flyway.report", name = "enabled", havingValue = "true")
-    public Flyway reportFlyway(@Qualifier("reportDataSource") DataSource ds) {
-        return buildFlyway(ds, "classpath:db/migration/report");
-    }
-
-    private Flyway buildFlyway(DataSource ds, String location) {
-        return Flyway.configure()
-                .dataSource(ds)
-                .locations(location)
-                .baselineOnMigrate(true)
-                .load();
-    }
-
-    /**
-     * Lance les migrations pour tous les Flyway déclarés
-     */
-    @PostConstruct
-    public void migrate(ObjectProvider<Flyway> flyways) {
-        flyways.orderedStream().forEach(Flyway::migrate);
-    }
-}
+GRANT CONNECT, RESOURCE TO APP2;
