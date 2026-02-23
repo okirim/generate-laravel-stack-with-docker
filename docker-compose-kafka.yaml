@@ -1,3 +1,24 @@
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.DefaultClientTlsStrategy;
+import org.apache.hc.core5.ssl.SSLContextBuilder;
+import org.apache.hc.core5.ssl.SSLContexts;
+
+import org.springframework.boot.ssl.SslBundle;
+import org.springframework.boot.ssl.SslBundles;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.web.client.RestTemplate;
+
+import javax.net.ssl.SSLContext;
+import java.security.SecureRandom;
+
+@Configuration
+public class RestTemplateConfig {
+
     @Bean
     public RestTemplate restTemplate(SslBundles sslBundles) throws Exception {
 
@@ -10,11 +31,20 @@
                 new SecureRandom()
         );
 
+        DefaultClientTlsStrategy tlsStrategy =
+                new DefaultClientTlsStrategy(sslContext);
+
+        PoolingHttpClientConnectionManager connectionManager =
+                PoolingHttpClientConnectionManagerBuilder.create()
+                        .setTlsStrategy(tlsStrategy)
+                        .build();
+
         CloseableHttpClient httpClient = HttpClients.custom()
-                .setSSLContext(sslContext)
+                .setConnectionManager(connectionManager)
                 .build();
 
         return new RestTemplate(
                 new HttpComponentsClientHttpRequestFactory(httpClient)
         );
     }
+}
