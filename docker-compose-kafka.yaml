@@ -1,44 +1,20 @@
-import org.apache.http.conn.socket.ConnectionSocketFactory;
-import org.apache.http.conn.socket.PlainConnectionSocketFactory;
-import org.apache.http.impl.conn.BasicHttpClientConnectionManager;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.config.Registry;
-import org.apache.http.config.RegistryBuilder;
-import org.springframework.ws.transport.http.HttpComponentsMessageSender;
-import org.springframework.ws.client.core.WebServiceTemplate;
+    @Bean
+    public RestTemplate restTemplate(SslBundles sslBundles) throws Exception {
 
-import javax.net.ssl.SSLContext;
+        SslBundle sslBundle = sslBundles.getBundle("client-bundle");
 
-public WebServiceTemplate createWebServiceTemplate(SSLContext sslContext) {
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(
+                sslBundle.getManagers().getKeyManagers(),
+                sslBundle.getManagers().getTrustManagers(),
+                new SecureRandom()
+        );
 
-    // Builder du HttpClient
-    HttpClientBuilder clientBuilder = HttpClientBuilder.create();
+        CloseableHttpClient httpClient = HttpClients.custom()
+                .setSSLContext(sslContext)
+                .build();
 
-    // Ici on utilise ta classe AssetSocketFactory avec le SSLContext
-    ConnectionSocketFactory assetSocketFactory = new AssetSocketFactory(sslContext);
-
-    // Registry avec HTTP et HTTPS
-    Registry<ConnectionSocketFactory> socketFactoryRegistry = RegistryBuilder.<ConnectionSocketFactory>create()
-            .register("https", assetSocketFactory)   // ton AssetSocketFactory pour HTTPS
-            .register("http", new PlainConnectionSocketFactory()) // HTTP simple
-            .build();
-
-    // ConnectionManager avec le registry
-    BasicHttpClientConnectionManager connectionManager = new BasicHttpClientConnectionManager(socketFactoryRegistry);
-
-    // Assigner le connection manager au builder
-    clientBuilder.setConnectionManager(connectionManager);
-
-    // Créer le HttpClient final
-    var httpClient = clientBuilder.build();
-
-    // Créer le MessageSender Spring WS
-    HttpComponentsMessageSender sender = new HttpComponentsMessageSender();
-    sender.setHttpClient(httpClient);
-
-    // Créer le WebServiceTemplate
-    WebServiceTemplate template = new WebServiceTemplate();
-    template.setMessageSender(sender);
-
-    return template;
-}
+        return new RestTemplate(
+                new HttpComponentsClientHttpRequestFactory(httpClient)
+        );
+    }
