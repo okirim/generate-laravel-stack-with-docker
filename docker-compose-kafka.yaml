@@ -1,43 +1,44 @@
-@Bean
-public WebServiceTemplate webServiceTemplate(SSLContext sslContext) {
-    // Création du SocketFactory pour MTLS
-    SSLConnectionSocketFactory sslSocketFactory =
-            new SSLConnectionSocketFactory(
-                    sslContext,
-                    new String[] { "TLSv1.2" }, // protocoles supportés
-                    null,
-                    SSLConnectionSocketFactory.getDefaultHostnameVerifier()
-            );
+import org.apache.http.conn.socket.ConnectionSocketFactory;
+import org.apache.http.conn.socket.PlainConnectionSocketFactory;
+import org.apache.http.impl.conn.BasicHttpClientConnectionManager;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.config.Registry;
+import org.apache.http.config.RegistryBuilder;
+import org.springframework.ws.transport.http.HttpComponentsMessageSender;
+import org.springframework.ws.client.core.WebServiceTemplate;
 
-    // Registry avec HTTPS
+import javax.net.ssl.SSLContext;
+
+public WebServiceTemplate createWebServiceTemplate(SSLContext sslContext) {
+
+    // Builder du HttpClient
+    HttpClientBuilder clientBuilder = HttpClientBuilder.create();
+
+    // Ici on utilise ta classe AssetSocketFactory avec le SSLContext
+    ConnectionSocketFactory assetSocketFactory = new AssetSocketFactory(sslContext);
+
+    // Registry avec HTTP et HTTPS
     Registry<ConnectionSocketFactory> socketFactoryRegistry = RegistryBuilder.<ConnectionSocketFactory>create()
-            .register("https", sslSocketFactory)
-            .register("http", PlainConnectionSocketFactory.getSocketFactory())
+            .register("https", assetSocketFactory)   // ton AssetSocketFactory pour HTTPS
+            .register("http", new PlainConnectionSocketFactory()) // HTTP simple
             .build();
 
-    // Connexion manager
-    PoolingHttpClientConnectionManager connectionManager =
-            new PoolingHttpClientConnectionManager(socketFactoryRegistry);
+    // ConnectionManager avec le registry
+    BasicHttpClientConnectionManager connectionManager = new BasicHttpClientConnectionManager(socketFactoryRegistry);
 
-    // Proxy config
-    HttpHost proxy = new HttpHost("proxy.host.com", 8080);
-    RequestConfig requestConfig = RequestConfig.custom()
-            .setProxy(proxy)
-            .build();
+    // Assigner le connection manager au builder
+    clientBuilder.setConnectionManager(connectionManager);
 
-    // Création du HttpClient avec SSLFactory et proxy
-    CloseableHttpClient httpClient = HttpClients.custom()
-            .setConnectionManager(connectionManager)
-            .setDefaultRequestConfig(requestConfig)
-            .build();
+    // Créer le HttpClient final
+    var httpClient = clientBuilder.build();
 
-    // Création du MessageSender
-    HttpComponentsMessageSender messageSender = new HttpComponentsMessageSender();
-    messageSender.setHttpClient(httpClient);
+    // Créer le MessageSender Spring WS
+    HttpComponentsMessageSender sender = new HttpComponentsMessageSender();
+    sender.setHttpClient(httpClient);
 
-    // WebServiceTemplate
+    // Créer le WebServiceTemplate
     WebServiceTemplate template = new WebServiceTemplate();
-    template.setMessageSender(messageSender);
+    template.setMessageSender(sender);
 
     return template;
 }
