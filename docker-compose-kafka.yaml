@@ -1,28 +1,28 @@
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.classic.HttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
 import org.apache.hc.client5.http.ssl.DefaultClientTlsStrategy;
-import org.apache.hc.core5.ssl.SSLContextBuilder;
-import org.apache.hc.core5.ssl.SSLContexts;
+import org.apache.hc.core5.http.HttpHost;
+import org.apache.hc.core5.http.io.SocketConfig;
+import org.apache.hc.core5.util.Timeout;
 
 import org.springframework.boot.ssl.SslBundle;
 import org.springframework.boot.ssl.SslBundles;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.ws.client.core.WebServiceTemplate;
+import org.springframework.ws.transport.http.HttpComponentsMessageSender;
 
 import javax.net.ssl.SSLContext;
 import java.security.SecureRandom;
 
 @Configuration
-public class RestTemplateConfig {
+public class SoapClientConfig {
 
     @Bean
-    public RestTemplate restTemplate(SslBundles sslBundles) throws Exception {
+    public WebServiceTemplate webServiceTemplate(SslBundles sslBundles) throws Exception {
 
-        SslBundle sslBundle = sslBundles.getBundle("client-bundle");
+        SslBundle sslBundle = sslBundles.getBundle("soap-client");
 
         SSLContext sslContext = SSLContext.getInstance("TLS");
         sslContext.init(
@@ -34,17 +34,24 @@ public class RestTemplateConfig {
         DefaultClientTlsStrategy tlsStrategy =
                 new DefaultClientTlsStrategy(sslContext);
 
-        PoolingHttpClientConnectionManager connectionManager =
+        var connectionManager =
                 PoolingHttpClientConnectionManagerBuilder.create()
-                        .setTlsStrategy(tlsStrategy)
+                        .setTlsSocketStrategy(tlsStrategy)
                         .build();
 
-        CloseableHttpClient httpClient = HttpClients.custom()
+        HttpHost proxy = new HttpHost("proxy.company.local", 8080);
+
+        HttpClient httpClient = HttpClients.custom()
                 .setConnectionManager(connectionManager)
+                .setProxy(proxy)
                 .build();
 
-        return new RestTemplate(
-                new HttpComponentsClientHttpRequestFactory(httpClient)
-        );
+        HttpComponentsMessageSender messageSender =
+                new HttpComponentsMessageSender(httpClient);
+
+        WebServiceTemplate template = new WebServiceTemplate();
+        template.setMessageSender(messageSender);
+
+        return template;
     }
 }
