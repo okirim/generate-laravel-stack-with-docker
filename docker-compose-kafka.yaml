@@ -1,17 +1,43 @@
--- Se connecter en admin
-ALTER SESSION SET CONTAINER = XEPDB1;
+@Bean
+public WebServiceTemplate webServiceTemplate(SSLContext sslContext) {
+    // Création du SocketFactory pour MTLS
+    SSLConnectionSocketFactory sslSocketFactory =
+            new SSLConnectionSocketFactory(
+                    sslContext,
+                    new String[] { "TLSv1.2" }, // protocoles supportés
+                    null,
+                    SSLConnectionSocketFactory.getDefaultHostnameVerifier()
+            );
 
--- Création des schémas
-CREATE USER APP1 IDENTIFIED BY Pass123
-DEFAULT TABLESPACE USERS
-TEMPORARY TABLESPACE TEMP
-QUOTA UNLIMITED ON USERS;
+    // Registry avec HTTPS
+    Registry<ConnectionSocketFactory> socketFactoryRegistry = RegistryBuilder.<ConnectionSocketFactory>create()
+            .register("https", sslSocketFactory)
+            .register("http", PlainConnectionSocketFactory.getSocketFactory())
+            .build();
 
-GRANT CONNECT, RESOURCE TO APP1;
+    // Connexion manager
+    PoolingHttpClientConnectionManager connectionManager =
+            new PoolingHttpClientConnectionManager(socketFactoryRegistry);
 
-CREATE USER APP2 IDENTIFIED BY Pass123
-DEFAULT TABLESPACE USERS
-TEMPORARY TABLESPACE TEMP
-QUOTA UNLIMITED ON USERS;
+    // Proxy config
+    HttpHost proxy = new HttpHost("proxy.host.com", 8080);
+    RequestConfig requestConfig = RequestConfig.custom()
+            .setProxy(proxy)
+            .build();
 
-GRANT CONNECT, RESOURCE TO APP2;
+    // Création du HttpClient avec SSLFactory et proxy
+    CloseableHttpClient httpClient = HttpClients.custom()
+            .setConnectionManager(connectionManager)
+            .setDefaultRequestConfig(requestConfig)
+            .build();
+
+    // Création du MessageSender
+    HttpComponentsMessageSender messageSender = new HttpComponentsMessageSender();
+    messageSender.setHttpClient(httpClient);
+
+    // WebServiceTemplate
+    WebServiceTemplate template = new WebServiceTemplate();
+    template.setMessageSender(messageSender);
+
+    return template;
+}
