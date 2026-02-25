@@ -1,54 +1,40 @@
-import org.apache.hc.client5.http.classic.HttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
-import org.apache.hc.client5.http.ssl.DefaultClientTlsStrategy;
-import org.apache.hc.core5.http.HttpHost;
+Objet : Compte-rendu – incident certificat HTTPS (SAN) sur appel applicatif
 
-import org.springframework.boot.ssl.SslBundle;
-import org.springframework.boot.ssl.SslBundles;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.ws.client.core.WebServiceTemplate;
-import org.springframework.ws.transport.http.HttpComponentsMessageSender;
+Bonjour,
 
-import javax.net.ssl.SSLContext;
-import java.security.SecureRandom;
+Je vous fais un compte-rendu du problème rencontré lors de l’appel entre l’application cliente et l’application serveur.
 
-@Configuration
-public class SoapConfig {
+Contexte
 
-    @Bean
-    public WebServiceTemplate webServiceTemplate(SslBundles sslBundles) throws Exception {
+Une application “client” appelle une application “serveur” via une URL en HTTPS.
 
-        SslBundle bundle = sslBundles.getBundle("soap-client");
+L’appel échouait à cause d’un contrôle lié au certificat HTTPS.
 
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(
-                bundle.getManagers().getKeyManagers(),
-                bundle.getManagers().getTrustManagers(),
-                new SecureRandom()
-        );
+Cause
 
-        var tlsStrategy = new DefaultClientTlsStrategy(sslContext);
+Lors d’une connexion HTTPS, le client vérifie le certificat présenté par le serveur.
 
-        var connectionManager =
-                PoolingHttpClientConnectionManagerBuilder.create()
-                        .setTlsSocketStrategy(tlsStrategy)
-                        .build();
+Parmi les vérifications, il y a la correspondance entre le nom de l’URL appelée (ex. api.exemple.com) et la liste des noms autorisés dans le certificat du serveur (champ SAN – Subject Alternative Name).
 
-        HttpHost proxy = new HttpHost("proxy.company.local", 8080);
+Dans notre cas, le nom utilisé dans l’URL n’était pas présent dans le SAN du certificat du serveur, donc le client refusait la connexion (impossibilité de confirmer qu’il s’agit bien du bon serveur).
 
-        HttpClient httpClient = HttpClients.custom()
-                .setConnectionManager(connectionManager)
-                .setProxy(proxy)
-                .build();
+Contournement appliqué
 
-        HttpComponentsMessageSender sender = new HttpComponentsMessageSender();
-        sender.setHttpClient(httpClient);   // ✅ IMPORTANT
+Un paramètre de configuration côté client (dans server.xml) a été modifié pour désactiver la vérification du certificat côté client (server check / hostname check mis à false).
 
-        WebServiceTemplate template = new WebServiceTemplate();
-        template.setMessageSender(sender);
+Cela a permis de rétablir l’appel, car le client n’effectue plus ce contrôle.
 
-        return template;
-    }
-}
+Point important
+
+Ce n’était pas le serveur qui “refusait” le client : c’est le client qui refusait le certificat du serveur à cause du décalage de nom (SAN).
+
+Recommandation (correctif durable)
+
+Remettre le contrôle à son état sécurisé et corriger le certificat côté serveur (ou l’URL utilisée) pour que le certificat contienne dans le SAN le nom exact utilisé par le client.
+
+Exemple : si l’URL appelée est https://api.exemple.com
+, le certificat doit inclure DNS:api.exemple.com dans le SAN.
+
+Je reste disponible si vous voulez que je liste précisément les noms présents dans le certificat actuel et le nom attendu côté client, afin de valider la correction.
+
+Cordialement,
